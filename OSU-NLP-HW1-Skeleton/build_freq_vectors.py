@@ -47,10 +47,10 @@ def compute_cooccurrence_matrix(corpus, vocab):
 	for sentence in corpus:
 		tokens = sentence.split()
 		for i in range(len(tokens)):
-			if tokens[i] in vocab.word2index:
+			if tokens[i] in vocab.word2idx:
 				for j in range(len(tokens)):
-					if tokens[j] in vocab.word2index:
-						C[vocab.word2index[tokens[i]], vocab.word2index[tokens[j]]] += 1
+					if tokens[j] in vocab.word2idx:
+						C[vocab.word2idx[tokens[i]], vocab.word2idx[tokens[j]]] += 1
 	np.save('Matrix_C_ij.npy', C)
 	return C
 
