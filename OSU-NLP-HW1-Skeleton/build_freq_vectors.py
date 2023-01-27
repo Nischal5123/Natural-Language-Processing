@@ -1,4 +1,4 @@
-
+import os
 from datasets import load_dataset
 from Vocabulary import Vocabulary
 import matplotlib.pyplot as plt
@@ -8,6 +8,7 @@ from sklearn.utils.extmath import randomized_svd
 import logging
 import itertools
 from sklearn.manifold import TSNE
+
 
 import random
 random.seed(42)
@@ -28,34 +29,38 @@ class UnimplementedFunctionError(Exception):
 
 def compute_cooccurrence_matrix(corpus, vocab):
 	"""
-	    
-	    compute_cooccurrence_matrix takes in list of strings corresponding to a text corpus and a vocabulary of size N and returns 
+
+	    compute_cooccurrence_matrix takes in list of strings corresponding to a text corpus and a vocabulary of size N and returns
 	    an N x N count matrix as described in the handout. It is up to the student to define the context of a word
 
 	    :params:
 	    - corpus: a list strings corresponding to a text corpus
 	    - vocab: a Vocabulary object derived from the corpus with N words
 
-	    :returns: 
+	    :returns:
 	    - C: a N x N matrix where the i,j'th entry is the co-occurrence frequency from the corpus between token i and j in the vocabulary
 
 	    """
-
 	N = vocab.size
-	C = np.zeros((N, N))
-
-	for sentence in corpus:
-		tokens = sentence.split()
-		for i in range(len(tokens)):
-			if tokens[i] in vocab.word2idx:
-				for j in range(len(tokens)):
-					if tokens[j] in vocab.word2idx:
-						C[vocab.word2idx[tokens[i]], vocab.word2idx[tokens[j]]] += 1
-	np.save('Matrix_C_ij.npy', C)
+	window_size = 4
+	file_name = 'C_Matrix.npy'
+	if os.path.isfile(file_name):
+		C = np.load(file_name)
+		logging.info("Loading Matrix from Disk")
+	else:
+		logging.info("Creating Matrix from Scratch")
+		C = np.zeros((N, N))
+		for sentence in tqdm(corpus):
+			tokens = vocab.text2idx(sentence)
+			tokens_len = len(tokens)
+			for i in range(tokens_len):
+				# Given a word at position i in some text, the k window of that wod is all other words in the range i-k to i+k
+				main_token=tokens[i]
+				for j in range(max(i - window_size, 0), min(i + window_size + 1, tokens_len)):
+						C[main_token, tokens[j]] += 1
+		np.save('C_Matrix.npy', C)
 	return C
 
-	# REMOVE THIS ONCE YOU IMPLEMENT THIS FUNCTION
-	#raise UnimplementedFunctionError("You have not yet implemented compute_count_matrix.")
 	
 
 ###########################
@@ -75,28 +80,23 @@ def compute_ppmi_matrix(corpus, vocab):
 	    :returns: 
 	    - PPMI: a N x N matrix where the i,j'th entry is the estimated PPMI from the corpus between token i and j in the vocabulary
 
-	    """ 
-		#get matrix
+	    """
+
 	C = compute_cooccurrence_matrix(corpus, vocab)
-	N = len(vocab)
+	# The small constant added to C before computing PPMI is to avoid the term in the log (C_ij N / C_ii C_jj) from being log(0) when words i and j do not co-occur
+	N = vocab.size
+	epsilon = 1e-5
+	C = C + epsilon
 	row_sum = C.sum(axis=1)
 	col_sum = C.sum(axis=0)
 	total_sum = C.sum()
 	PPMI = np.zeros((N, N))
-	for i in range(N):
+
+	for i in tqdm(range(N)):
 		for j in range(N):
-			#Hint: Add a small constant to C to avoid problems with log(0).
-			if C[i, j]==0 :
-				C[i, j]+=0.0005
-			PPMI[i, j] = max(0, np.log(C[i, j] * total_sum / (row_sum[i] * col_sum[j])))
+			PPMI[i, j] = max(np.log(C[i, j] * total_sum / row_sum[i] * col_sum[j]), 0)
 	return PPMI
 
-
-	# REMOVE THIS ONCE YOU IMPLEMENT THIS FUNCTION
-	#raise UnimplementedFunctionError("You have not yet implemented compute_ppmi_matrix.")
-
-
-	
 
 ################################################################################################
 # Main Skeleton Code Driver
@@ -110,10 +110,19 @@ def main_freq():
 
 
 	logging.info("Building vocabulary")
-	vocab = Vocabulary(dataset_text)
-	vocab.make_vocab_charts()
+	#cut_off heuristic to test
+	cut_off=50
+
+	#explore vocab without any cut-off heuristic
+	vocab_test = Vocabulary(dataset_text)
+	logging.info("Creating Plots")
+	vocab_test.make_vocab_charts(cut_off)
 	plt.close()
 	plt.pause(0.01)
+
+	#vocab with best threshold identified from the plots
+	vocab = Vocabulary(dataset_text,cut_off)
+
 
 
 	logging.info("Computing PPMI matrix")
@@ -156,6 +165,22 @@ def plot_word_vectors_tsne(word_vectors, vocab):
 			ha='right',
 			va='bottom',
 			fontsize=5)
+	plt.savefig('tsne.pdf')
+	plt.show()
+
+def plot_loss(loss):
+	"""
+
+	plots avg. loss over last 100 batches
+
+
+	"""
+	fig1, ax = plt.subplots()
+	ax.plot(range(len(loss)), loss)
+	plt.xlabel('Epochs')
+	plt.ylabel('Loss')
+	plt.title('Average Epoch Loss')
+	plt.savefig('loss.pdf')
 	plt.show()
 
 
