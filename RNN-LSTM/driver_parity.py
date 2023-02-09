@@ -43,7 +43,7 @@ def main():
     logging.info("Training model")
     maximum_training_sequence_length = 5
     train = Parity(split='train', max_length=maximum_training_sequence_length)
-    train_loader = DataLoader(train, batch_size=100, shuffle=True, collate_fn=pad_collate)
+    train_loader = DataLoader(train, batch_size=20, shuffle=True, collate_fn=pad_collate)
     train_model(model, train_loader)
 
 
@@ -64,8 +64,11 @@ class ParityLSTM(torch.nn.Module) :
     # __init__ builds the internal components of the model (presumably an LSTM and linear layer for classification)
     # The LSTM should have hidden dimension equal to hidden_dim
 
-    def __init__(self, hidden_dim=64) :
+    def __init__(self, hidden_dim=128) :
         super().__init__()
+        self.hidden_dim = hidden_dim
+        self.LSTM = nn.LSTM(1, hidden_size=self.hidden_dim, num_layers=1, batch_first=True)
+        self.linear = nn.Linear(self.hidden_dim, 2)
 
     
     # forward runs the model on an B x max_length x 1 tensor and outputs a B x 2 tensor representing a score for 
@@ -81,6 +84,14 @@ class ParityLSTM(torch.nn.Module) :
     #   out -- a batch_size x 2 tensor of scores for even/odd parity    
 
     def forward(self, x, s):
+        batch_size = x.shape[0]
+        si = torch.tensor(s) - 1  # zero indexing
+        rs = torch.arange(0, batch_size)  # to index the batch dim
+        x = x.unsqueeze(2)  # batch_size x max_length x 1 binary tensor
+        out, hidden = self.LSTM(x)
+        out = out[rs, si, :]  # formatting to send to Linear layer
+        # linear prediction
+        out = self.linear(out)
         return out
 
     def __str__(self):
@@ -106,7 +117,8 @@ def runParityExperiment(model, max_train_length):
         val_loader = DataLoader(val, batch_size=1000, shuffle=False, collate_fn=pad_collate)
         val_loss, val_acc = validation_metrics(model, val_loader)
         lengths.append(k)
-        accuracy.append(val_acc)
+        # TypeError: can't convert cuda:0 device type tensor to numpy. Use Tensor.cpu() to copy the tensor to host memory first.
+        accuracy.append(val_acc.cpu())
 
         logging.info("length=%d val accuracy %.3f" % (k, val_acc))
         k+=1
@@ -116,6 +128,7 @@ def runParityExperiment(model, max_train_length):
     plt.xlabel("Binary String Length")
     plt.ylabel("Accuracy")
     plt.savefig(str(model)+'_parity_generalization.png')
+    plt.show()
 
 
 
@@ -147,7 +160,8 @@ def pad_collate(batch):
       x_lens = [len(x) for x in xx]
 
       xx_pad = pad_sequence(xx, batch_first=True, padding_value=0)
-      yy = torch.LongTensor(yy)
+      #yy = torch.LongTensor(yy)
+      yy = torch.tensor(yy).long()
 
       return xx_pad, yy, x_lens
 

@@ -9,24 +9,24 @@ def s(x):
 ################################
 
 # i gate
-w_ix = 0
-w_ih = 0
-b_i = 0
+w_ix =8
+w_ih = 8
+b_i = -5
 
 # f gate
 w_fx = 0
 w_fh = 0
-b_f = 0
+b_f = -1
 
 # o gate
-w_ox = 0
-w_oh = 0
-b_o = 0
+w_ox = -10
+w_oh = -10
+b_o = 15
 
 # g
 w_gx = 0
 w_gh = 0
-b_g = 0
+b_g = 10
 
 
 ################################
