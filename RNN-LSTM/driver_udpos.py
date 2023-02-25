@@ -204,12 +204,12 @@ def plot_loss(loss_log,val_loss_log):
     # Plot training and validation curves
     fig, ax1 = plt.subplots(figsize=(16, 9))
     color = 'red'
-    ax1.plot(range(len(loss_log)), loss_log, c=color, alpha=0.25, label="Train Loss")
+    ax1.plot(range(len(loss_log)), loss_log, c='blue', label="Train Loss")
     ax1.plot(range(len(val_loss_log)), val_loss_log, c="green", label="Val. Loss")
     ax1.set_xlabel("Epoch")
     ax1.set_ylabel("Avg. Cross-Entropy Loss", c=color)
     ax1.tick_params(axis='y', labelcolor=color)
-    ax1.set_ylim(-0.01, 3)
+
 
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     ax1.legend(loc="center")
@@ -226,7 +226,7 @@ def main(tag_sentences):
     #################
 
     device = get_device()
-    max_epochs = 10
+    max_epochs = 50
     batch_size = 64
 
     trainloader, valloader, testloader, text2idx_pad_text, text2idx_pad_tag, pretrained_embeddings, vocab_size = get_data_loaders(
